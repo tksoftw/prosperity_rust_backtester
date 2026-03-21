@@ -70,6 +70,7 @@ pub fn run() -> Result<()> {
             run_id: Some(plan.run_id),
             output_root: output_root.clone(),
             persist: args.persist,
+            write_submission_log: true,
             materialize_artifacts: args.persist,
             metadata_overrides: Default::default(),
         })?;
@@ -81,7 +82,7 @@ pub fn run() -> Result<()> {
             own_trade_count: output.metrics.own_trade_count,
             final_pnl_total: output.metrics.final_pnl_total,
             final_pnl_by_product: output.metrics.final_pnl_by_product.clone(),
-            run_dir: args.persist.then(|| display_path(&output.run_dir)),
+            run_dir: Some(display_path(&output.run_dir)),
         });
         outputs.push(output);
     }
@@ -743,42 +744,23 @@ fn print_summary(
         }
     );
     println!("mode: fast");
-    println!("artifacts: {}", if persist { "saved" } else { "off" });
+    println!("artifacts: {}", if persist { "saved" } else { "log-only" });
     if let Some(bundle_dir) = bundle_dir {
         println!("bundle: {bundle_dir}");
     }
-    if persist {
-        println!(
-            "{:<12} {:>6} {:>8} {:>11} {:>12}  RUN_DIR",
-            "SET", "DAY", "TICKS", "OWN_TRADES", "FINAL_PNL"
-        );
-        for row in rows {
-            println!(
-                "{:<12} {:>6} {:>8} {:>11} {:>12.2}  {}",
-                row.dataset,
-                render_day(row.day),
-                row.tick_count,
-                row.own_trade_count,
-                row.final_pnl_total,
-                row.run_dir.as_deref().unwrap_or("-")
-            );
-        }
-        print_product_table(rows, products);
-        return;
-    }
-
     println!(
-        "{:<12} {:>6} {:>8} {:>11} {:>12}",
+        "{:<12} {:>6} {:>8} {:>11} {:>12}  RUN_DIR",
         "SET", "DAY", "TICKS", "OWN_TRADES", "FINAL_PNL"
     );
     for row in rows {
         println!(
-            "{:<12} {:>6} {:>8} {:>11} {:>12.2}",
+            "{:<12} {:>6} {:>8} {:>11} {:>12.2}  {}",
             row.dataset,
             render_day(row.day),
             row.tick_count,
             row.own_trade_count,
-            row.final_pnl_total
+            row.final_pnl_total,
+            row.run_dir.as_deref().unwrap_or("-")
         );
     }
     print_product_table(rows, products);

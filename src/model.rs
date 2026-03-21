@@ -118,6 +118,7 @@ pub struct RunRequest {
     pub run_id: Option<String>,
     pub output_root: PathBuf,
     pub persist: bool,
+    pub write_submission_log: bool,
     pub materialize_artifacts: bool,
     pub metadata_overrides: MetadataOverrides,
 }

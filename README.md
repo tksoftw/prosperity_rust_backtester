@@ -161,6 +161,7 @@ Behavior:
 - `prices_*.csv` files are paired automatically with matching `trades_*.csv` files from the same folder
 - `latest` and `tutorial` run the full bundled tutorial round bundle: day `-2`, day `-1`, and the sample tutorial submission log
 - use `--day <n>` to run only the matching day dataset within the round bundle; this excludes submission files
+- normal fast runs also write `submission.log` under `runs/<backtest-id>/`
 - use `--persist` or `PERSIST=1` to write replay artifacts under `runs/`
 - persisted multi-day or multi-file runs also write one combined bundle at `runs/<backtest-id>/`, including a merged `submission.log`
 - product output defaults to a compact summary so large product sets do not flood the terminal
@@ -192,11 +193,11 @@ Example output shape:
 trader: latest_trader.py [auto]
 dataset: tutorial [default]
 mode: fast
-artifacts: off
-SET             DAY    TICKS  OWN_TRADES    FINAL_PNL
-D-2              -2    10000          39       118.10
-D-1              -1    10000          42       123.45
-SUB              -1     2000          18        51.20
+artifacts: log-only
+SET             DAY    TICKS  OWN_TRADES    FINAL_PNL  RUN_DIR
+D-2              -2    10000          39       118.10  runs/backtest-123-day-2-day-2
+D-1              -1    10000          42       123.45  runs/backtest-123-day-1-day-1
+SUB              -1     2000          18        51.20  runs/backtest-123-submission-day-1
 
 PRODUCT        D-2        D-1        SUB
 TOM          70.00      77.20      29.10

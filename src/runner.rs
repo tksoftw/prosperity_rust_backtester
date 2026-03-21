@@ -134,7 +134,9 @@ pub fn run_backtest(request: &RunRequest) -> Result<RunOutput> {
     let mut trader = PythonTrader::new(&workspace_root(), &request.trader_file)?;
     let run_id = resolve_run_id(request)?;
     let run_dir = request.output_root.join(&run_id);
-    if request.persist {
+    let need_submission_log = request.persist || request.write_submission_log;
+    let full_artifacts = request.persist || request.materialize_artifacts;
+    if need_submission_log {
         fs::create_dir_all(&run_dir)
             .with_context(|| format!("failed to create run directory {}", run_dir.display()))?;
     }
@@ -151,7 +153,6 @@ pub fn run_backtest(request: &RunRequest) -> Result<RunOutput> {
         .unwrap_or_else(|| display_path(&request.dataset_file));
     let bundle_generated_at = resolve_generated_at(&request.metadata_overrides)?;
     let metrics_generated_at = resolve_generated_at(&request.metadata_overrides)?;
-    let materialize = request.persist || request.materialize_artifacts;
 
     let mut cash_by_product: IndexMap<String, f64> = dataset
         .products
@@ -173,7 +174,7 @@ pub fn run_backtest(request: &RunRequest) -> Result<RunOutput> {
         .map(|product| (product, 0.0))
         .collect();
 
-    let mut activity_rows: Vec<String> = if materialize {
+    let mut activity_rows: Vec<String> = if need_submission_log {
         vec![ACTIVITY_HEADER.to_string()]
     } else {
         Vec::new()
@@ -222,17 +223,21 @@ pub fn run_backtest(request: &RunRequest) -> Result<RunOutput> {
                 &mut cash_by_product,
                 tick.timestamp,
                 &request.matching,
-                materialize,
+                full_artifacts,
             );
 
-            if materialize {
+            if need_submission_log {
                 for trade in &remaining_market {
                     combined_trade_history.push(trade_history_json(trade));
                 }
                 for trade in &symbol_own_trades {
-                    own_trade_rows.push(trade_history_json(trade));
                     combined_trade_history.push(trade_history_json(trade));
+                    if full_artifacts {
+                        own_trade_rows.push(trade_history_json(trade));
+                    }
                 }
+            }
+            if full_artifacts {
                 orders_flat.extend(symbol_orders);
             }
 
@@ -258,7 +263,7 @@ pub fn run_backtest(request: &RunRequest) -> Result<RunOutput> {
             let pnl = cash_by_product.get(product).copied().unwrap_or(0.0) + mark_to_market;
             pnl_by_product.insert(product.clone(), pnl);
 
-            if materialize {
+            if need_submission_log {
                 activity_rows.push(format_activity_row(tick, product, snapshot, pnl));
             }
         }
@@ -266,13 +271,15 @@ pub fn run_backtest(request: &RunRequest) -> Result<RunOutput> {
         final_pnl_total = pnl_by_product.values().sum();
         final_pnl_by_product = pnl_by_product.clone();
 
-        if materialize {
+        if need_submission_log {
             sandbox_rows.push(object(vec![
                 ("timestamp", json_i64(tick.timestamp)),
                 ("sandboxLog", Value::String(sandbox_log.clone())),
                 ("lambdaLog", Value::String(algorithm_logs.clone())),
             ]));
+        }
 
+        if full_artifacts {
             pnl_series.push(object(vec![
                 ("timestamp", json_i64(tick.timestamp)),
                 ("total", json_f64(final_pnl_total)?),
@@ -323,7 +330,7 @@ pub fn run_backtest(request: &RunRequest) -> Result<RunOutput> {
     ]);
     let result_json = sorted_json_bytes(&result_value)?;
 
-    let artifacts = if materialize {
+    let artifacts = if need_submission_log {
         let bundle_value = object(vec![
             (
                 "run",
@@ -348,22 +355,55 @@ pub fn run_backtest(request: &RunRequest) -> Result<RunOutput> {
                         .collect(),
                 ),
             ),
-            ("timeline", Value::Array(timeline)),
-            ("pnl_series", Value::Array(pnl_series)),
+            (
+                "timeline",
+                Value::Array(if full_artifacts { timeline } else { Vec::new() }),
+            ),
+            (
+                "pnl_series",
+                Value::Array(if full_artifacts {
+                    pnl_series
+                } else {
+                    Vec::new()
+                }),
+            ),
         ]);
-        let bundle_json = sorted_json_bytes(&bundle_value)?;
-        let metrics_json = sorted_json_bytes(&metrics_value)?;
-        let activity_csv = build_lines_bytes(&activity_rows);
+        let bundle_json = if full_artifacts {
+            sorted_json_bytes(&bundle_value)?
+        } else {
+            Vec::new()
+        };
+        let metrics_json = if full_artifacts {
+            sorted_json_bytes(&metrics_value)?
+        } else {
+            Vec::new()
+        };
+        let activity_csv = if full_artifacts {
+            build_lines_bytes(&activity_rows)
+        } else {
+            Vec::new()
+        };
         let submission_log = build_submission_log(
             &run_id,
             &activity_rows,
             &sandbox_rows,
             &combined_trade_history,
         )?;
-        let pnl_by_product_csv = build_pnl_csv(&dataset.products, &bundle_value)?;
-        let combined_log =
-            build_combined_log(&sandbox_rows, &activity_rows, &combined_trade_history)?;
-        let trades_csv = build_trades_csv(&own_trade_rows)?;
+        let pnl_by_product_csv = if full_artifacts {
+            build_pnl_csv(&dataset.products, &bundle_value)?
+        } else {
+            Vec::new()
+        };
+        let combined_log = if full_artifacts {
+            build_combined_log(&sandbox_rows, &activity_rows, &combined_trade_history)?
+        } else {
+            Vec::new()
+        };
+        let trades_csv = if full_artifacts {
+            build_trades_csv(&own_trade_rows)?
+        } else {
+            Vec::new()
+        };
         let artifact_set = ArtifactSet {
             metrics_json,
             bundle_json,
@@ -376,6 +416,8 @@ pub fn run_backtest(request: &RunRequest) -> Result<RunOutput> {
 
         if request.persist {
             write_artifacts(&run_dir, &artifact_set)?;
+        } else if request.write_submission_log {
+            write_submission_log_only(&run_dir, &artifact_set)?;
         }
 
         Some(artifact_set)
@@ -1028,6 +1070,11 @@ fn write_artifacts(run_dir: &Path, artifacts: &ArtifactSet) -> Result<()> {
     )?;
     fs::write(run_dir.join("combined.log"), &artifacts.combined_log)?;
     fs::write(run_dir.join("trades.csv"), &artifacts.trades_csv)?;
+    Ok(())
+}
+
+fn write_submission_log_only(run_dir: &Path, artifacts: &ArtifactSet) -> Result<()> {
+    fs::write(run_dir.join("submission.log"), &artifacts.submission_log)?;
     Ok(())
 }
 
