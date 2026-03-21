@@ -10,6 +10,7 @@ WORKDIR /app
 
 COPY Cargo.toml Cargo.lock pyproject.toml Makefile README.md LICENSE-APACHE LICENSE-MIT ./
 COPY src ./src
+COPY scripts ./scripts
 COPY datasets ./datasets
 COPY traders ./traders
 

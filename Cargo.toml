@@ -18,7 +18,7 @@ serde_json = { version = "1.0", features = ["preserve_order"] }
 time = { version = "0.3", features = ["formatting"] }
 
 [profile.release]
-lto = "thin"
-codegen-units = 1
+lto = false
+codegen-units = 8
 panic = "abort"
-strip = "debuginfo"
+strip = "none"

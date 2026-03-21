@@ -542,8 +542,19 @@ fn match_orders_for_symbol(
 ) -> (Vec<Trade>, Vec<Trade>, Vec<FlatOrderRow>) {
     let mut own_trades = Vec::new();
     let mut order_rows = Vec::new();
+    let best_bid = bids
+        .iter()
+        .filter(|level| level.volume > 0)
+        .map(|level| level.price)
+        .max();
+    let best_ask = asks
+        .iter()
+        .filter(|level| level.volume > 0)
+        .map(|level| level.price)
+        .min();
     let mut market_available: Vec<Trade> = market_trades
         .iter()
+        .filter(|trade| !market_trade_duplicates_touch(trade, best_bid, best_ask))
         .map(|trade| Trade {
             symbol: symbol.to_string(),
             price: trade.price,
@@ -683,6 +694,28 @@ fn match_orders_for_symbol(
         .filter(|trade| trade.quantity > 0)
         .collect();
     (own_trades, remaining_market, order_rows)
+}
+
+fn market_trade_duplicates_touch(
+    trade: &crate::model::MarketTrade,
+    best_bid: Option<i64>,
+    best_ask: Option<i64>,
+) -> bool {
+    if trade.buyer == "SUBMISSION" {
+        if let Some(best_ask) = best_ask {
+            if trade.price == best_ask {
+                return true;
+            }
+        }
+    }
+    if trade.seller == "SUBMISSION" {
+        if let Some(best_bid) = best_bid {
+            if trade.price == best_bid {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 fn queue_penetration_available(quantity: i64, queue_penetration: f64) -> i64 {
@@ -1150,9 +1183,11 @@ fn indexmap_f64_to_json(values: &IndexMap<String, f64>) -> Result<IndexMap<Strin
 #[cfg(test)]
 mod tests {
     use super::{
-        display_path, eligible_trade_price, project_root, python_round_to_digits,
-        python_round_to_i64, queue_penetration_available, slippage_adjusted_price,
+        display_path, eligible_trade_price, market_trade_duplicates_touch, project_root,
+        python_round_to_digits, python_round_to_i64, queue_penetration_available,
+        slippage_adjusted_price,
     };
+    use crate::model::MarketTrade;
 
     #[test]
     fn queue_penetration_uses_bankers_rounding() {
@@ -1172,6 +1207,25 @@ mod tests {
         assert!(!eligible_trade_price(100, 100, 1, "worse"));
         assert!(eligible_trade_price(100, 101, -1, "all"));
         assert!(!eligible_trade_price(100, 100, -1, "worse"));
+    }
+
+    #[test]
+    fn market_trade_duplicate_filter_skips_touch_submission_rows() {
+        let trade = MarketTrade {
+            symbol: "TOMATOES".to_string(),
+            price: 100,
+            quantity: 4,
+            buyer: String::new(),
+            seller: "SUBMISSION".to_string(),
+            timestamp: 0,
+        };
+        assert!(market_trade_duplicates_touch(&trade, Some(100), Some(104)));
+
+        let off_touch = MarketTrade {
+            price: 98,
+            ..trade
+        };
+        assert!(!market_trade_duplicates_touch(&off_touch, Some(100), Some(104)));
     }
 
     #[test]

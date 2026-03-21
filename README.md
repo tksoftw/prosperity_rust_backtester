@@ -40,6 +40,18 @@ or just run the backtester directly:
 make backtest
 ```
 
+The macOS `make` targets intentionally build through a wrapper instead of your full shell environment. By default they write Rust build artifacts to:
+
+```bash
+~/Library/Caches/rust_backtester/target
+```
+
+If you want a different target dir, override it explicitly:
+
+```bash
+CARGO_TARGET_DIR=/path/to/target make build-release
+```
+
 ### Windows
 
 Use WSL2. Open an Ubuntu shell inside WSL2 and run the same commands there. Native Windows shells are not the target environment for this repo.
@@ -48,6 +60,7 @@ There is no separate manual build step required for normal use:
 
 - `make backtest` and the other `make` run targets use `cargo run`, which builds automatically on first use
 - `make install` installs the CLI once so you can run `rust_backtester` directly afterward
+- `make doctor` prints local diagnostics for macOS build hangs and execution-policy issues
 
 ## Included Data
 
@@ -207,6 +220,7 @@ EMR          48.10      46.25      22.10
 ### Bundled Targets
 
 ```bash
+make doctor
 make build
 make build-release
 make test
@@ -217,6 +231,36 @@ make install-uv-editable
 make backtest
 make tutorial
 ```
+
+## macOS Troubleshooting
+
+If a local Rust build hangs on macOS, the most likely symptom is that `cargo build`, `make build-release`, or `make backtest` stalls during `build-script-build` while `syspolicyd` uses a lot of CPU.
+
+First retry path:
+
+```bash
+make doctor
+make build-release
+make backtest
+```
+
+Those `make` targets already use the repo wrapper and a stable target dir outside the repo.
+
+If it still hangs and you do not want to reboot, the non-restart remediation is:
+
+```bash
+sudo killall syspolicyd
+make build-release
+```
+
+If local macOS execution policy is still unhealthy, use the isolated fallback:
+
+```bash
+make docker-build
+make docker-smoke
+```
+
+This is a local macOS executable-launch issue, not a backtester logic issue.
 
 Additional `round1` to `round8` and `round1-submission` to `round8-submission` targets are included in the `Makefile`. They become usable once those dataset folders contain JSON files.
 
