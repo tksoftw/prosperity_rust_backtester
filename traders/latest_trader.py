@@ -6,6 +6,8 @@ class Trader:
     LIMITS = {
         "EMERALDS": 80,
         "TOMATOES": 80,
+        "INTARIAN_PEPPER_ROOT": 80,
+        "ASH_COATED_OSMIUM": 80,
     }
     QUOTE_SIZE = 5
 

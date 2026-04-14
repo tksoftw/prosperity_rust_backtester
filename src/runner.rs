@@ -526,6 +526,8 @@ fn position_limit(symbol: &str) -> i64 {
     match symbol {
         "EMERALDS" => 80,
         "TOMATOES" => 80,
+        "INTARIAN_PEPPER_ROOT" => 80,
+        "ASH_COATED_OSMIUM" => 80,
         "RAINFOREST_RESIN" => 50,
         "KELP" => 50,
         "SQUID_INK" => 50,
