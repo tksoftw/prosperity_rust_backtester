@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.4.4 - 2026-04-24
+
+### Added
+
+- Bundle the raw IMC round 3 day CSVs under `datasets/round3/` with the official filenames from the latest round 3 download.
+
+### Changed
+
+- Make round 3 the default zero-argument dataset now that it is the latest populated bundled round.
+
 ## v0.4.3 - 2026-04-19
 
 ### Fixed

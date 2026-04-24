@@ -114,14 +114,19 @@ The repo is organized by round:
 - `datasets/round2/trades_round_2_day_0.csv`
 - `datasets/round2/prices_round_2_day_1.csv`
 - `datasets/round2/trades_round_2_day_1.csv`
-- `datasets/round3/`
+- `datasets/round3/prices_round_3_day_0.csv`
+- `datasets/round3/trades_round_3_day_0.csv`
+- `datasets/round3/prices_round_3_day_1.csv`
+- `datasets/round3/trades_round_3_day_1.csv`
+- `datasets/round3/prices_round_3_day_2.csv`
+- `datasets/round3/trades_round_3_day_2.csv`
 - `datasets/round4/`
 - `datasets/round5/`
 - `datasets/round6/`
 - `datasets/round7/`
 - `datasets/round8/`
 
-Right now the bundled public data is the raw IMC tutorial day data in `datasets/tutorial/`, the raw round 1 day data in `datasets/round1/`, the raw round 2 day data in `datasets/round2/`, plus a sample tutorial `submission.log` produced with the bundled basic trader. The remaining round folders are there so future round files can be placed in the correct folder instead of being mixed together.
+Right now the bundled public data is the raw IMC tutorial day data in `datasets/tutorial/`, the raw round 1 day data in `datasets/round1/`, the raw round 2 day data in `datasets/round2/`, the raw round 3 day data in `datasets/round3/`, plus a sample tutorial `submission.log` produced with the bundled basic trader. The remaining round folders are there so future round files can be placed in the correct folder instead of being mixed together.
 If you place a portal `submission.log` file into a round folder, the backtester will use it. `submission.log` is also generated for persisted runs.
 
 ## CLI
@@ -394,7 +399,8 @@ The Docker image builds the project in a clean container and runs the zero-argum
 - `datasets/tutorial/` bundled raw IMC tutorial day CSVs and sample submission log
 - `datasets/round1/` bundled raw IMC round 1 CSVs
 - `datasets/round2/` bundled raw IMC round 2 CSVs
-- `datasets/round3/` ... `datasets/round8/` placeholders for future round data
+- `datasets/round3/` bundled raw IMC round 3 CSVs
+- `datasets/round4/` ... `datasets/round8/` placeholders for future round data
 - `runs/` persisted outputs when `--persist` is used
 - `runs/<backtest-id>/` combined bundle for persisted multi-day runs, including `combined.log` and `manifest.json`
 
